@@ -7,13 +7,15 @@ namespace Ui {
 class QG_SerialPortSettings;
 }
 class QAbstractButton;
+class RK_CommUser;
 
 class QG_SerialPortSettings : public QDialog
 {
+    friend class RK_CommUser;
     Q_OBJECT
 
 public:
-    explicit QG_SerialPortSettings(QWidget *parent = nullptr);
+
     ~QG_SerialPortSettings();
 
 private slots:
@@ -37,7 +39,7 @@ private slots:
     void _updateState();
 
 private:
-
+    explicit QG_SerialPortSettings(QWidget *parent = nullptr);
     void _initData();
     void _saveData();
 

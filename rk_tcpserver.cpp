@@ -82,15 +82,16 @@ void RK_TCPServer::clsConnect()
 void RK_TCPServer::newConnect()
 {
     Q_D(RK_TCPServer);
-    auto sk = d->server.nextPendingConnection();//与客户端通信的套接字
+    auto sk = d->server.nextPendingConnection();
     connect(sk,&QTcpSocket::disconnected,this,&RK_TCPServer::clsConnect);
+    connect(sk,&QTcpSocket::disconnected,this,&RK_Device::connectChanged);
     d->device = sk;
     RK_Device::open();
     d->device = nullptr;
     d->clients.insert(sk);
     if(nullptr == d->current)
         d->current = sk;
-    emit newConnection();
+    emit connectChanged();
 }
 
 bool RK_TCPServer::send(const char *data, int length)
@@ -119,6 +120,12 @@ void RK_TCPServer::close()
 {
     Q_D(RK_TCPServer);
     d->server.close();
+    blockSignals(true);
+    for(auto cl:d->clients)
+    {
+        cl->close();
+    }
+    blockSignals(false);
     d->clients.clear();
     d->current = nullptr;
 }

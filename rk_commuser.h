@@ -40,6 +40,15 @@ struct RK_ServerParam
 class RK_CommUser
 {
 public:
+
+    /**@brief 打开通信设置界面
+    * @param[in] type 通信类型
+    * - 0 串口通信
+    * - 1 网口通信
+    * @see :: QG_SerialPortSettings,QG_NetPortSettings
+    */
+    void OpenCommSettingUI(int type);
+
     /**@brief 获取串口设备
     * - nullptr 若用户没有设置过
     * - RK_SerialPort* 串口设置界面配置好的客户端
@@ -75,11 +84,12 @@ public:
     * - RK_Device::e_tcpServer tcp服务器
     * @param[in] inqMsg 查询语句
     * @param[in] msec 等待超时设置.若确认无响应则设置为0，否则会阻塞 msec 毫秒
+    * @param[in] sem 循环等待信号. *sem==true时，待超时处理，*sem==false立即返回
     * @return 设备应答消息。若msec后还没收到则返回空
     * @warning 确保用户进行过网口/串口设置，并打开设备，否则发送失败
     * @see :: RK_TCPClient,RK_TCPServer,RK_SerialPort
     */
-    QByteArray ReadResponseMsg(RK_Device::DeviceType tp,QString inqMsg,int msec = 3000);
+    QByteArray ReadResponseMsg(RK_Device::DeviceType tp,QString inqMsg,int msec = 3000,bool *sem=nullptr);
 };
 
 #endif // RK_COMMUSER_H

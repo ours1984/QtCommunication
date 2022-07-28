@@ -27,9 +27,6 @@ public:
     bool setListenPort(int port);
     int listenPort()const;
 
-signals:
-    void newConnection();
-
 private slots:
     void clsConnect();
     void newConnect();

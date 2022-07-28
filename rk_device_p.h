@@ -7,7 +7,7 @@
 #define RK_DD(Class) Class * const dd = static_cast<Class *>(d_ptr->device)
 #define Q_CD(Class) const Class##Private * const d = d_func()
 #define DSPD "DefaultSirialPort"
-#define DNCD "DefaultNetCline"
+#define DNCD "DefaultNetClient"
 #define DNSD "DefaultNetServer"
 
 class RK_DevicePrivate

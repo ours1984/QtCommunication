@@ -24,6 +24,20 @@ QG_NetPortSettings::QG_NetPortSettings(QWidget *parent) :
     gp->addButton(ui->rb_client);
     gp->addButton(ui->rb_server);
 
+    QString localHostName = QHostInfo::localHostName();
+    QHostInfo info = QHostInfo::fromName(localHostName);
+    foreach(QHostAddress address,info.addresses())
+    {
+        if(address.protocol() == QAbstractSocket::IPv4Protocol)
+        {
+            if(QHostAddress::LocalHost != address)
+            {
+                ui->cb_sip->addItem(address.toString());
+                break;
+            }
+        }
+    }
+
     _initData();
 
     connect(gp,SIGNAL(buttonClicked(QAbstractButton *)),this,SLOT(_updateState()));
@@ -41,7 +55,12 @@ QG_NetPortSettings::~QG_NetPortSettings()
 void QG_NetPortSettings::on_pb_open_clicked()
 {
     RK_Device *dev =_getDevice(true);
-    _saveData();
+    auto err = _saveData();
+    if(!err.isEmpty())
+    {
+        QMessageBox::critical(this,"错误",err);
+        return;
+    }
 
     if(dev&&!dev->open())
     {
@@ -49,14 +68,7 @@ void QG_NetPortSettings::on_pb_open_clicked()
     }
     else
     {
-        if(ui->rb_server->isChecked())
-        {
-            auto sp = qobject_cast<RK_TCPServer*>(dev);
-            if(sp)
-            {
-                connect(sp,&RK_TCPServer::newConnection,this,&QG_NetPortSettings::_updateState);
-            }
-        }
+        connect(dev,&RK_Device::connectChanged,this,&QG_NetPortSettings::_updateState);
     }
     _updateState();
 }
@@ -67,14 +79,7 @@ void QG_NetPortSettings::on_pb_close_clicked()
     if(dev&&dev->isOpen())
     {
         dev->close();
-        if(ui->rb_server->isChecked())
-        {
-            auto sp = qobject_cast<RK_TCPServer*>(dev);
-            if(sp)
-            {
-                disconnect(sp,&RK_TCPServer::newConnection,this,&QG_NetPortSettings::_updateState);
-            }
-        }
+        ui->lw_client->clear();
     }
     _updateState();
 }
@@ -143,11 +148,15 @@ void QG_NetPortSettings::on_lw_client_currentTextChanged(const QString &currentT
     }
 }
 
-void QG_NetPortSettings::on_QG_NetPortSettings_finished(int result)
+void QG_NetPortSettings::on_QG_NetPortSettings_finished(int)
 {
-    auto sp = RK_CommUser().GetDefaultSerialPort();
+    auto sp = RK_CommUser().GetDefaultNetClient();
     if(sp)
         disconnect(sp,&RK_Device::readReady,this,&QG_NetPortSettings::_reciveData);
+
+    ui->gb_debug->blockSignals(true);
+    ui->gb_debug->setChecked(false);
+    ui->gb_debug->blockSignals(false);
 }
 
 void QG_NetPortSettings::_reciveData(QObject*sok)
@@ -155,6 +164,10 @@ void QG_NetPortSettings::_reciveData(QObject*sok)
     RK_Device *dev = qobject_cast<RK_Device *>(sender());
     if(dev)
     {
+        auto data = dev->readAllCurrentData();
+        if(data.isEmpty())
+            return;
+
         QString msg ="时间：";
         msg.append(QDateTime::currentDateTime().toString ("hh:mm:ss"));
         msg.append("\n");
@@ -170,7 +183,6 @@ void QG_NetPortSettings::_reciveData(QObject*sok)
             }
         }
 
-        auto data = dev->readAllCurrentData();
         msg += "Ascii：";
         msg += data;
         msg.append("\n");
@@ -195,7 +207,7 @@ void QG_NetPortSettings::_updateState()
 {
     RK_Device *dev =_getDevice();
     if(dev&&dev->isOpen())
-    {
+    {       
         ui->gb_debug->setEnabled(true);
         ui->lay_param->setEnabled(false);
         ui->pb_open->setEnabled(false);
@@ -204,6 +216,10 @@ void QG_NetPortSettings::_updateState()
     }
     else
     {
+        ui->gb_debug->blockSignals(true);
+        ui->gb_debug->setChecked(false);
+        ui->gb_debug->blockSignals(false);
+
         ui->gb_debug->setEnabled(false);
         ui->lay_param->setEnabled(true);
         ui->pb_open->setEnabled(true);
@@ -215,17 +231,17 @@ void QG_NetPortSettings::_updateState()
     {
         ui->lay_server->setEnabled(false);
         ui->lw_client->hide();
-        ui->le_ip->setEnabled(true);
+        ui->lay_param->setCurrentIndex(0);
     }
     else
     {
-        ui->le_ip->setEnabled(false);
-        ui->lw_client->show();
-
         if(dev&&dev->isOpen())
             ui->lay_server->setEnabled(false);
         else
             ui->lay_server->setEnabled(true);
+
+        ui->lw_client->show();
+        ui->lay_param->setCurrentIndex(1);
 
         auto sp = qobject_cast<RK_TCPServer*>(dev);
         if(sp)
@@ -241,8 +257,6 @@ void QG_NetPortSettings::_updateState()
     ui->le_sigh->setEnabled(ui->cb_sign->currentIndex()==RK_ServerParam::e_sfe_userdefine);
     ui->le_err->setEnabled(ui->cb_err->currentIndex()==RK_ServerParam::e_sfe_userdefine);
     ui->le_finish->setEnabled(ui->cb_finish->currentIndex()==RK_ServerParam::e_sfe_userdefine);
-
-
 }
 
 void QG_NetPortSettings::_initData()
@@ -265,7 +279,6 @@ void QG_NetPortSettings::_initData()
     ui->le_finish->setText(param.user_finish);
     ui->le_err->setText(param.user_err);
 
-
     //init port data
     RK_SaveHelper().loadDevice();
     RK_Device *dev =_getDevice();
@@ -276,8 +289,8 @@ void QG_NetPortSettings::_initData()
             auto sp = dynamic_cast<RK_TCPClient*>(dev);
             if(sp)
             {
-                ui->le_port->setText(QString::number(sp->dstPort()));
-                ui->le_ip->setText(sp->dstAddr());
+                ui->le_cport->setText(QString::number(sp->dstPort()));
+                ui->le_cip->setText(sp->dstAddr());
             }
         }
         else
@@ -285,39 +298,29 @@ void QG_NetPortSettings::_initData()
             auto sp = qobject_cast<RK_TCPServer*>(dev);
             if(sp)
             {
-                ui->lw_client->clear();
-                ui->lw_client->addItems(sp->getClients());
-                auto ddd = ui->lw_client->findItems(sp->currentClinet(),Qt::MatchExactly);
-                if(!ddd.empty())
-                    ui->lw_client->setCurrentItem(ddd.front());
-
-                ui->le_port->setText(QString::number(sp->listenPort()));
-                QString localHostName = QHostInfo::localHostName();
-                QHostInfo info = QHostInfo::fromName(localHostName);
-                foreach(QHostAddress address,info.addresses())
-                {
-                    if(address.protocol() == QAbstractSocket::IPv4Protocol)
-                    {
-                        ui->le_ip->setText(address.toString());
-                        break;
-                    }
-                }
+                ui->le_sport->setText(QString::number(sp->listenPort()));
             }
         }
     }
 }
 
-void QG_NetPortSettings::_saveData()
+QString QG_NetPortSettings::_saveData()
 {
+    QHostAddress test;
     //save port data
     if(ui->rb_client->isChecked())
     {
+        if (!test.setAddress(ui->le_cip->text()))
+        {
+            return "IP地址非法！";
+        }
+
         auto sp = RK_CommUser().GetDefaultNetClient();
         if(sp)
         {
-            if(!sp->setDstAddr(ui->le_ip->text()))
-                ui->le_ip->setText(sp->dstAddr());
-            sp->setDstPort(ui->le_port->text().toInt());
+            if(!sp->setDstAddr(ui->le_cip->text()))
+                ui->le_cip->setText(sp->dstAddr());
+            sp->setDstPort(ui->le_cport->text().toInt());
         }
     }
     else
@@ -325,7 +328,7 @@ void QG_NetPortSettings::_saveData()
         auto sp = RK_CommUser().GetDefaultNetServer();
         if(sp)
         {
-            sp->setListenPort(ui->le_port->text().toInt());
+            sp->setListenPort(ui->le_sport->text().toInt());
         }
     }
     RK_SaveHelper().saveDevice();
@@ -342,6 +345,8 @@ void QG_NetPortSettings::_saveData()
     param.user_err=ui->le_err->text();
     param.user_sign=ui->le_sigh->text();
     RK_SaveHelper().saveServer(false,param);
+
+    return "";
 }
 
 RK_Device* QG_NetPortSettings::_getDevice(bool create)

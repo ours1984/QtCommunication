@@ -10,6 +10,7 @@ class RK_TCPClient : public RK_Device
 public:
     RK_TCPClient();
 
+    bool isOpen() const override;
     bool open()override;
     void close()override;
 

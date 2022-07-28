@@ -34,7 +34,7 @@ public:
 
     QByteArray readWaitNextData(int msecs = 30000);
 
-    QByteArray readWaitNextDataSem(bool& sem,int msecs = 30000);
+    QByteArray readWaitNextDataSem(int msecs,bool *sem);
 
     QByteArray readAllCurrentData();
 
@@ -42,6 +42,7 @@ public:
 
 signals:
     void readReady(QObject* sender);
+    void connectChanged();
 
 protected:
     virtual QByteArray _readData(QObject* sender);

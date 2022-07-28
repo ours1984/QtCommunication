@@ -19,15 +19,23 @@ RK_TCPClient::RK_TCPClient()
     d_ptr->device = new QTcpSocket();
 }
 
+bool RK_TCPClient::isOpen() const
+{
+    RK_DD(QTcpSocket);
+    return dd->state() == QAbstractSocket::ConnectedState;
+}
+
 bool RK_TCPClient::open()
 {
     Q_D(RK_TCPClient);
     RK_DD(QTcpSocket);
     dd->connectToHost(d->dst_addr,d->dst_port);
-    if(dd->waitForConnected())
+    if(dd->waitForConnected(3000))
     {
+        connect(dd,&QTcpSocket::disconnected,this,&RK_Device::connectChanged);
         return RK_Device::open();
     }
+    RK_Device::close();
     return false;
 }
 

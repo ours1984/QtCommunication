@@ -4,6 +4,29 @@
 #include "rk_devicemanager.h"
 #include "rk_device_p.h"
 
+#include "qg_netportsettings.h"
+#include "qg_serialportsettings.h"
+
+void RK_CommUser::OpenCommSettingUI(int type)
+{
+    switch (type) {
+    case 0:
+    {
+        QG_SerialPortSettings set;
+        set.exec();
+        break;
+    }
+    case 1:
+    {
+        QG_NetPortSettings set;
+        set.exec();
+        break;
+    }
+    default:
+        break;
+    }
+}
+
 RK_SerialPort* RK_CommUser::GetDefaultSerialPort()
 {
     return DEVICEMANAGER.GetDevice<RK_SerialPort>(DSPD);
@@ -33,7 +56,7 @@ RK_ServerParam RK_CommUser::GetSerialServerParam()
     return param;
 }
 
-QByteArray RK_CommUser::ReadResponseMsg(RK_Device::DeviceType tp,QString inqMsg,int msec)
+QByteArray RK_CommUser::ReadResponseMsg(RK_Device::DeviceType tp,QString inqMsg,int msec,bool *sem)
 {
     QString id;
     switch(tp)
@@ -55,7 +78,10 @@ QByteArray RK_CommUser::ReadResponseMsg(RK_Device::DeviceType tp,QString inqMsg,
     {
         if(device->send(inqMsg))
         {
-            return device->readWaitNextData(msec);
+            if(sem)
+                return device->readWaitNextData(msec);
+            else
+                return device->readWaitNextDataSem(msec,sem);
         }
     }
     return "";

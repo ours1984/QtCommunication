@@ -1,5 +1,7 @@
 #include "rk_device.h"
 #include "rk_device_p.h"
+#include <QElapsedTimer>
+#include <QCoreApplication>
 
 RK_Device::~RK_Device()
 {
@@ -13,7 +15,8 @@ RK_Device::RK_Device(RK_DevicePrivate *ptr):d_ptr(ptr)
 
 auto RK_Device::type()const->DeviceType
 {
-    return d_ptr->type;
+    Q_CD(RK_Device);
+    return d->type;
 }
 
 QByteArray RK_Device::_readData(QObject* sender)
@@ -26,29 +29,33 @@ QByteArray RK_Device::_readData(QObject* sender)
 
 bool RK_Device::isOpen()const
 {
-    return d_ptr->device->isOpen();
+    Q_CD(RK_Device);
+    return d->device->isOpen();
 }
 
 void RK_Device::close()
 {
+    Q_D(RK_Device);
+    disconnect(d->device, &QIODevice::readyRead,this, &RK_Device::_receiveInfo);
     disconnect();
-    d_ptr->device->disconnect();
-    if(d_ptr->device->isOpen()){
-        d_ptr->device->close();
+    d->device->disconnect();
+    if(d->device->isOpen()){
+        d->device->close();
     }
 }
 
 bool RK_Device::open()
 {
-    if(d_ptr->device->isOpen())
+    Q_D(RK_Device);
+    if(d->device->isOpen())
     {
-        connect(d_ptr->device, &QIODevice::readyRead,this, &RK_Device::_receiveInfo);
+        connect(d->device, &QIODevice::readyRead,this, &RK_Device::_receiveInfo);
         return true;
     }
 
-    if(d_ptr->device->open(QIODevice::ReadWrite))
+    if(d->device->open(QIODevice::ReadWrite))
     {
-        connect(d_ptr->device, &QIODevice::readyRead,this, &RK_Device::_receiveInfo);
+        connect(d->device, &QIODevice::readyRead,this, &RK_Device::_receiveInfo);
         return true;
     }
     return false;
@@ -56,7 +63,8 @@ bool RK_Device::open()
 
 bool RK_Device::send(const char*data,int length)
 {
-    int ret = d_ptr->device->write(data,length);
+    Q_D(RK_Device);
+    int ret = d->device->write(data,length);
     return ret == length;
 }
 
@@ -67,14 +75,16 @@ QByteArray RK_Device::readWaitNextData(int msecs)
     return readAllCurrentData();
 }
 
-#include <QTimer>
-#include <QCoreApplication>
-QByteArray RK_Device::readWaitNextDataSem(bool &sem, int msecs)
+QByteArray RK_Device::readWaitNextDataSem(int msecs,bool *sem)
 {
-    bool timeout =false;
-    QTimer::singleShot(msecs,[&timeout](){timeout=true;});
+    if(!sem)
+        return "";
 
-    while(d_ptr->revCount ==0 && timeout == false && sem)
+    QElapsedTimer timer;
+    timer.start();
+
+    Q_D(RK_Device);
+    while(d->revCount ==0 && timer.elapsed()<msecs && *sem)
     {
         QCoreApplication::processEvents();
     }
@@ -84,9 +94,10 @@ QByteArray RK_Device::readWaitNextDataSem(bool &sem, int msecs)
 
 QByteArray RK_Device::readAllCurrentData()
 {
-    QByteArray ret = d_ptr->revData;
-    d_ptr->revCount =0;
-    d_ptr->revData.clear();
+    Q_D(RK_Device);
+    QByteArray ret = d->revData;
+    d->revCount =0;
+    d->revData.clear();
     return ret;
 }
 

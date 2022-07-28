@@ -8,16 +8,18 @@ class QG_NetPortSettings;
 }
 class QAbstractButton;
 class RK_Device;
+class RK_CommUser;
 
 class QG_NetPortSettings : public QDialog
 {
+    friend class RK_CommUser;
     Q_OBJECT
-
 public:
-    explicit QG_NetPortSettings(QWidget *parent = nullptr);
+
     ~QG_NetPortSettings();
 
 private slots:
+
     void on_pb_open_clicked();
 
     void on_pb_close_clicked();
@@ -30,7 +32,7 @@ private slots:
 
     void on_dbb_over_clicked(QAbstractButton *button);
 
-    void on_QG_NetPortSettings_finished(int result);
+    void on_QG_NetPortSettings_finished(int);
 
     void on_lw_client_currentTextChanged(const QString &currentText);
 
@@ -39,9 +41,9 @@ private slots:
     void _updateState();
 
 private:
-
+    explicit QG_NetPortSettings(QWidget *parent = nullptr);
     void _initData();
-    void _saveData();
+    QString _saveData();
     RK_Device* _getDevice(bool create=false);
 
 private:

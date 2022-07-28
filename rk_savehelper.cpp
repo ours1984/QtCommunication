@@ -16,7 +16,7 @@
 
 #define SRC_PORT "SrcPort"
 #define DST_PORT "DstPort"
-#define DST_ADDR "DstAddt"
+#define DST_ADDR "DstAddr"
 
 static std::map<RK_Device::DeviceType,QString> s_d2s={
     {RK_Device::e_serial,"SerialPort"},

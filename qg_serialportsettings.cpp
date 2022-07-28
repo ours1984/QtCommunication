@@ -113,11 +113,14 @@ void QG_SerialPortSettings::on_dbb_over_clicked(QAbstractButton *button)
     _saveData();
 }
 
-void QG_SerialPortSettings::on_QG_SerialPortSettings_finished(int result)
+void QG_SerialPortSettings::on_QG_SerialPortSettings_finished(int)
 {
     auto sp = RK_CommUser().GetDefaultSerialPort();
     if(sp)
         disconnect(sp,&RK_SerialPort::readReady,this,&QG_SerialPortSettings::_reciveData);
+    ui->gb_debug->blockSignals(true);
+    ui->gb_debug->setChecked(false);
+    ui->gb_debug->blockSignals(false);
 }
 
 void QG_SerialPortSettings::on_pb_clr_clicked()
