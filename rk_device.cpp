@@ -68,25 +68,20 @@ bool RK_Device::send(const char*data,int length)
     return ret == length;
 }
 
-QByteArray RK_Device::readWaitNextData(int msecs)
+QByteArray RK_Device::readWaitNextData(int msecs,bool *sem)
 {
-    Q_CD(RK_Device);
-    d->device->waitForReadyRead(msecs);
-    return readAllCurrentData();
-}
-
-QByteArray RK_Device::readWaitNextDataSem(int msecs,bool *sem)
-{
-    if(!sem)
-        return "";
-
-    QElapsedTimer timer;
-    timer.start();
-
     Q_D(RK_Device);
-    while(d->revCount ==0 && timer.elapsed()<msecs && *sem)
+    if(sem)
     {
-        QCoreApplication::processEvents();
+        QElapsedTimer timer;
+        timer.start();
+        while(d->revCount ==0 && timer.elapsed()<msecs && *sem)
+        {
+            QCoreApplication::processEvents();
+        }
+    }
+    else{
+        d->device->waitForReadyRead(msecs);
     }
 
     return readAllCurrentData();

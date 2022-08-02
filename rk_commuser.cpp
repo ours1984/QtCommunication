@@ -78,10 +78,7 @@ QByteArray RK_CommUser::ReadResponseMsg(RK_Device::DeviceType tp,QString inqMsg,
     {
         if(device->send(inqMsg))
         {
-            if(sem)
-                return device->readWaitNextData(msec);
-            else
-                return device->readWaitNextDataSem(msec,sem);
+            return device->readWaitNextData(msec,sem);
         }
     }
     return "";

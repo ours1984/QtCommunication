@@ -32,9 +32,7 @@ public:
     bool send(QByteArray str){return send(str.constData(),str.length());}
     bool send(QString str){return send(str.toUtf8());}
 
-    QByteArray readWaitNextData(int msecs = 30000);
-
-    QByteArray readWaitNextDataSem(int msecs,bool *sem);
+    QByteArray readWaitNextData(int msecs = 3000,bool *sem =nullptr);
 
     QByteArray readAllCurrentData();
 
